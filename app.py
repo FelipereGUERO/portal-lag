@@ -1,7 +1,10 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="Portal LAG", layout="wide")
+st.set_page_config(
+    page_title="Portal LAG",
+    layout="wide"
+)
 
 @st.cache_data
 def carregar_dados():
@@ -19,14 +22,17 @@ def carregar_dados():
                     encoding=encoding
                 )
 
-                # padroniza colunas
+                # Padroniza nomes das colunas
                 df.columns = df.columns.str.strip().str.lower()
 
-                # se leu tudo em uma coluna só, tenta outro formato
+                # Remove colunas inúteis do tipo "unnamed"
+                df = df.loc[:, ~df.columns.str.contains("^unnamed", case=False, regex=True)]
+
+                # Se leu tudo em uma coluna só, tenta outro formato
                 if len(df.columns) <= 1:
                     continue
 
-                # limpa espaços
+                # Limpa espaços dos valores
                 for col in df.columns:
                     df[col] = df[col].astype(str).str.strip()
 
@@ -35,7 +41,7 @@ def carregar_dados():
             except Exception as e:
                 ultimo_erro = e
 
-    st.error(f"Não foi possível ler o CSV. Verifique encoding e separador. Erro: {ultimo_erro}")
+    st.error(f"Não foi possível ler o arquivo portal_links.csv. Verifique o separador e a codificação. Erro: {ultimo_erro}")
     st.stop()
 
 
@@ -53,14 +59,15 @@ def normalizar_link(url):
 
 df = carregar_dados()
 
-# valida colunas
+# Validação de colunas obrigatórias
 colunas_obrigatorias = ["area", "nome", "link"]
 faltando = [col for col in colunas_obrigatorias if col not in df.columns]
+
 if faltando:
-    st.error(f"Faltam colunas no CSV: {', '.join(faltando)}")
+    st.error(f"Faltam colunas obrigatórias no CSV: {', '.join(faltando)}")
     st.stop()
 
-# filtro ativo
+# Filtra apenas links ativos
 if "ativo" in df.columns:
     df = df[
         df["ativo"].astype(str).str.strip().str.lower().isin(
@@ -68,10 +75,10 @@ if "ativo" in df.columns:
         )
     ]
 
-# corrige links
+# Corrige links
 df["link"] = df["link"].apply(normalizar_link)
 
-# remove inválidos
+# Remove linhas inválidas
 df = df.dropna(subset=["area", "nome", "link"])
 df = df[
     (df["area"] != "") &
@@ -101,30 +108,34 @@ busca = st.text_input("Pesquisar")
 if busca:
     resultado = df[
         df["nome"].astype(str).str.contains(busca, case=False, na=False) |
-        df["area"].astype(str).str.contains(busca, case=False, na=False)
+        df["area"].astype(str).str.contains(busca, case=False, na=False) |
+        df["tipo"].astype(str).str.contains(busca, case=False, na=False) if "tipo" in df.columns else False
     ]
 
     st.subheader("Resultados")
-    for _, row in resultado.sort_values("nome").iterrows():
-        st.link_button(
-            f"{row['nome']} | {row['area']}",
-            row["link"],
-            use_container_width=True
-        )
+
+    if resultado.empty:
+        st.info("Nenhum resultado encontrado.")
+    else:
+        for _, row in resultado.sort_values(["area", "nome"]).iterrows():
+            st.link_button(
+                f"{row['nome']} | {row['area']}",
+                row["link"],
+                use_container_width=True
+            )
 else:
     areas = sorted(df["area"].dropna().unique())
+
     for area in areas:
         with st.expander(area):
             area_df = df[df["area"] == area].sort_values("nome")
-            for _, row in area_df.iterrows():
-                st.link_button(
-                    row["nome"],
-                    row["link"],
-                    use_container_width=True
-                )
 
-# debug temporário
-st.divider()
-st.write("Colunas:", list(df.columns))
-st.write("Total de registros:", len(df))
-st.dataframe(df)
+            if area_df.empty:
+                st.write("Nenhum link disponível.")
+            else:
+                for _, row in area_df.iterrows():
+                    st.link_button(
+                        row["nome"],
+                        row["link"],
+                        use_container_width=True
+                    )
