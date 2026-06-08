@@ -26,11 +26,7 @@ with col3:
 st.divider()
 st.subheader("📂 Áreas")
 col1, col2, col3 = st.columns(3)
-areas = list(dados.items())
-for i, (area, qtd) in enumerate(areas):
+for i, (area, qtd) in enumerate(dados.items()):
    coluna = [col1, col2, col3][i % 3]
    with coluna:
-st.info(f"""
-### {area}
-📌 {qtd} links cadastrados
-""")
+st.info(f"{area}\n\n📌 {qtd} links cadastrados")
