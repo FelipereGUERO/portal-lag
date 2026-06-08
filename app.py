@@ -17,16 +17,12 @@ st.title("📊 Portal LAG")
 st.caption("Central de Dashboards, Indicadores e Ferramentas")
 st.divider()
 col1, col2, col3 = st.columns(3)
-with col1:
-   st.metric("🏢 Áreas", len(dados))
-with col2:
-   st.metric("📊 Dashboards", sum(dados.values()))
-with col3:
-   st.metric("👥 Usuários", "LAG")
+col1.metric("🏢 Áreas", len(dados))
+col2.metric("📊 Dashboards", sum(dados.values()))
+col3.metric("👥 Usuários", "LAG")
 st.divider()
 st.subheader("📂 Áreas")
 col1, col2, col3 = st.columns(3)
 for i, (area, qtd) in enumerate(dados.items()):
    coluna = [col1, col2, col3][i % 3]
-   with coluna:
-st.info(f"{area}\n\n📌 {qtd} links cadastrados")
+coluna.info(f"{area}\n\n📌 {qtd} links cadastrados")
