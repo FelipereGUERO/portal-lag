@@ -1,14 +1,11 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(
-    page_title="Portal LAG",
-    layout="wide"
-)
+st.set_page_config(page_title="Portal LAG", layout="wide")
 
 @st.cache_data
 def carregar_dados():
-    # Tenta identificar separador automaticamente e evita problema de encoding
+    # Lê CSV de forma mais robusta
     df = pd.read_csv(
         "portal_links.csv",
         sep=None,
@@ -19,33 +16,16 @@ def carregar_dados():
     # Padroniza nomes das colunas
     df.columns = df.columns.str.strip().str.lower()
 
-    # Remove espaços extras dos valores textuais
+    # Limpa espaços
     for col in df.columns:
-        if df[col].dtype == "object":
-            df[col] = df[col].astype(str).str.strip()
-
-    # Valida colunas obrigatórias
-    colunas_obrigatorias = ["area", "nome", "link"]
-    faltando = [col for col in colunas_obrigatorias if col not in df.columns]
-    if faltando:
-        st.error(f"Faltam colunas no CSV: {', '.join(faltando)}")
-        st.stop()
-
-    # Filtra ativos de forma mais segura
-    if "ativo" in df.columns:
-        df = df[
-            df["ativo"].astype(str).str.strip().str.lower().isin(
-                ["sim", "s", "true", "1", "ativo", "yes", "y"]
-            )
-        ]
+        df[col] = df[col].astype(str).str.strip()
 
     return df
-
 
 def normalizar_link(url):
     url = str(url).strip()
 
-    if not url or url.lower() == "nan":
+    if url == "" or url.lower() == "nan":
         return None
 
     if not url.lower().startswith(("http://", "https://")):
@@ -53,14 +33,33 @@ def normalizar_link(url):
 
     return url
 
-
 df = carregar_dados()
 
+st.write("Total antes do filtro:", len(df))
+st.write("Colunas encontradas:", list(df.columns))
+
+if "ativo" in df.columns:
+    st.write("Valores em 'ativo':", df["ativo"].value_counts(dropna=False))
+
+    df = df[
+        df["ativo"].astype(str).str.strip().str.lower().isin(
+            ["sim", "s", "true", "1", "ativo", "yes", "y"]
+        )
+    ]
+
+st.write("Total depois do filtro:", len(df))
+
 # Corrige links
-df["link"] = df["link"].apply(normalizar_link)
+if "link" in df.columns:
+    df["link"] = df["link"].apply(normalizar_link)
 
 # Remove linhas inválidas
 df = df.dropna(subset=["area", "nome", "link"])
+df = df[
+    (df["area"] != "") &
+    (df["nome"] != "") &
+    (df["link"] != "")
+]
 
 st.title("Portal LAG")
 
@@ -70,13 +69,7 @@ col2.metric("Links", len(df))
 
 if "tipo" in df.columns:
     qtd_powerbi = len(
-        df[
-            df["tipo"].astype(str).str.contains(
-                "power",
-                case=False,
-                na=False
-            )
-        ]
+        df[df["tipo"].astype(str).str.contains("power", case=False, na=False)]
     )
 else:
     qtd_powerbi = 0
@@ -94,8 +87,7 @@ if busca:
     ]
 
     st.subheader("Resultados")
-
-    for _, row in resultado.sort_values("nome").iterrows():
+    for _, row in resultado.iterrows():
         st.link_button(
             f"{row['nome']} | {row['area']}",
             row["link"],
@@ -103,14 +95,16 @@ if busca:
         )
 else:
     areas = sorted(df["area"].dropna().unique())
-
     for area in areas:
         with st.expander(area):
             area_df = df[df["area"] == area].sort_values("nome")
-
             for _, row in area_df.iterrows():
                 st.link_button(
                     row["nome"],
                     row["link"],
                     use_container_width=True
                 )
+
+st.divider()
+st.subheader("Debug")
+st.dataframe(df)
