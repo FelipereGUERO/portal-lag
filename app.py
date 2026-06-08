@@ -5,27 +5,44 @@ st.set_page_config(page_title="Portal LAG", layout="wide")
 
 @st.cache_data
 def carregar_dados():
-    # Lê CSV de forma mais robusta
-    df = pd.read_csv(
-        "portal_links.csv",
-        sep=None,
-        engine="python",
-        encoding="utf-8-sig"
-    )
+    encodings = ["utf-8-sig", "utf-8", "cp1252", "latin1"]
+    separadores = [";", ","]
 
-    # Padroniza nomes das colunas
-    df.columns = df.columns.str.strip().str.lower()
+    ultimo_erro = None
 
-    # Limpa espaços
-    for col in df.columns:
-        df[col] = df[col].astype(str).str.strip()
+    for encoding in encodings:
+        for sep in separadores:
+            try:
+                df = pd.read_csv(
+                    "portal_links.csv",
+                    sep=sep,
+                    encoding=encoding
+                )
 
-    return df
+                # padroniza colunas
+                df.columns = df.columns.str.strip().str.lower()
+
+                # se leu tudo em uma coluna só, tenta outro formato
+                if len(df.columns) <= 1:
+                    continue
+
+                # limpa espaços
+                for col in df.columns:
+                    df[col] = df[col].astype(str).str.strip()
+
+                return df
+
+            except Exception as e:
+                ultimo_erro = e
+
+    st.error(f"Não foi possível ler o CSV. Verifique encoding e separador. Erro: {ultimo_erro}")
+    st.stop()
+
 
 def normalizar_link(url):
     url = str(url).strip()
 
-    if url == "" or url.lower() == "nan":
+    if not url or url.lower() == "nan":
         return None
 
     if not url.lower().startswith(("http://", "https://")):
@@ -33,27 +50,28 @@ def normalizar_link(url):
 
     return url
 
+
 df = carregar_dados()
 
-st.write("Total antes do filtro:", len(df))
-st.write("Colunas encontradas:", list(df.columns))
+# valida colunas
+colunas_obrigatorias = ["area", "nome", "link"]
+faltando = [col for col in colunas_obrigatorias if col not in df.columns]
+if faltando:
+    st.error(f"Faltam colunas no CSV: {', '.join(faltando)}")
+    st.stop()
 
+# filtro ativo
 if "ativo" in df.columns:
-    st.write("Valores em 'ativo':", df["ativo"].value_counts(dropna=False))
-
     df = df[
         df["ativo"].astype(str).str.strip().str.lower().isin(
             ["sim", "s", "true", "1", "ativo", "yes", "y"]
         )
     ]
 
-st.write("Total depois do filtro:", len(df))
+# corrige links
+df["link"] = df["link"].apply(normalizar_link)
 
-# Corrige links
-if "link" in df.columns:
-    df["link"] = df["link"].apply(normalizar_link)
-
-# Remove linhas inválidas
+# remove inválidos
 df = df.dropna(subset=["area", "nome", "link"])
 df = df[
     (df["area"] != "") &
@@ -87,7 +105,7 @@ if busca:
     ]
 
     st.subheader("Resultados")
-    for _, row in resultado.iterrows():
+    for _, row in resultado.sort_values("nome").iterrows():
         st.link_button(
             f"{row['nome']} | {row['area']}",
             row["link"],
@@ -105,6 +123,8 @@ else:
                     use_container_width=True
                 )
 
+# debug temporário
 st.divider()
-st.subheader("Debug")
+st.write("Colunas:", list(df.columns))
+st.write("Total de registros:", len(df))
 st.dataframe(df)
