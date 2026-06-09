@@ -60,11 +60,24 @@ st.markdown("""
         border: 1px solid rgba(255,255,255,0.12);
     }
 
-    .portal-note {
+    .business-note {
         color: #aeb6c2;
         font-size: 13px;
         margin-top: -8px;
         margin-bottom: 18px;
+    }
+
+    .stButton > button {
+        background-color: #ffcc00;
+        color: black;
+        border: none;
+        border-radius: 10px;
+        font-weight: 600;
+    }
+
+    .stButton > button:hover {
+        background-color: #f5b800;
+        color: black;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -156,6 +169,31 @@ def emoji_tipo(tipo):
 
 
 # =========================
+# HEADER PARKER
+# =========================
+header_col1, header_col2, header_col3 = st.columns([1, 5, 1.2])
+
+with header_col1:
+    if os.path.exists("parker_logo.png"):
+        st.image("parker_logo.png", width=140)
+
+with header_col2:
+    st.markdown('<div class="main-title">Business System</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="sub-title">Acesso rápido aos dashboards, relatórios e links corporativos</div>',
+        unsafe_allow_html=True
+    )
+
+with header_col3:
+    st.write("")
+    st.write("")
+    if st.button("🔄 Atualizar dados", use_container_width=True):
+        st.cache_data.clear()
+        st.rerun()
+
+st.markdown('<div class="parker-bar"></div>', unsafe_allow_html=True)
+
+# =========================
 # DADOS
 # =========================
 df = carregar_dados()
@@ -187,24 +225,6 @@ if "tipo" not in df.columns:
     df["tipo"] = ""
 
 # =========================
-# HEADER PARKER
-# =========================
-header_col1, header_col2 = st.columns([1, 6])
-
-with header_col1:
-    if os.path.exists("parker_logo.png"):
-        st.image("parker_logo.png", width=140)
-
-with header_col2:
-    st.markdown('<div class="main-title">Portal LAG</div>', unsafe_allow_html=True)
-    st.markdown(
-        '<div class="sub-title">Acesso rápido aos dashboards, relatórios e links corporativos</div>',
-        unsafe_allow_html=True
-    )
-
-st.markdown('<div class="parker-bar"></div>', unsafe_allow_html=True)
-
-# =========================
 # MÉTRICAS
 # =========================
 col1, col2, col3 = st.columns(3)
@@ -224,7 +244,7 @@ st.divider()
 # =========================
 busca = st.text_input("Pesquisar", placeholder="Digite nome, área ou tipo...")
 st.markdown(
-    '<div class="portal-note">Use a busca para localizar rapidamente dashboards, páginas e relatórios.</div>',
+    '<div class="business-note">Use a busca para localizar rapidamente dashboards, páginas e relatórios.</div>',
     unsafe_allow_html=True
 )
 
