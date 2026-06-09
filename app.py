@@ -3,7 +3,7 @@ import streamlit as st
 import pandas as pd
 
 st.set_page_config(
-    page_title="Portal LAG",
+    page_title="Business System",
     page_icon="📊",
     layout="wide"
 )
